@@ -9,7 +9,7 @@ composer install
 composer test
 ```
 
-Migration Guard supports the Laravel versions and PHP releases declared in `composer.json`. Keep changes compatible with those constraints unless the change explicitly updates the support policy.
+Migration Guard supports the Laravel versions and PHP releases declared in `composer.json`. Laravel 13 requires PHP 8.3 or later. Keep changes compatible with those constraints unless the change explicitly updates the support policy.
 
 ## Pull Requests
 

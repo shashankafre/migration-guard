@@ -7,7 +7,7 @@ Repository and Composer package: [`shashankafre/migration-guard`](https://github
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11 or 12
+- Laravel 11, 12, or 13
 - MySQL 8+ or MariaDB 10.6+
 
 ## Install
