@@ -17,4 +17,14 @@ final class MigrationParserTest extends TestCase
             $result['operations'],
         ));
     }
+
+    public function test_it_reports_the_exact_unsupported_api_without_executing_a_named_migration(): void
+    {
+        $result = $this->app->make(MigrationParser::class)->parse(__DIR__.'/../Fixtures/static_unsupported_migration.php');
+
+        self::assertNull($result['error']);
+        self::assertSame('unsupported_operation', $result['operations'][0]->type);
+        self::assertSame('Schema::mystery', $result['operations'][0]->attributes['api']);
+        self::assertSame(11, $result['operations'][0]->attributes['line']);
+    }
 }

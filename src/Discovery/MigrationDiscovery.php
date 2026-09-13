@@ -50,6 +50,9 @@ final class MigrationDiscovery
                 }
 
                 $name = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+                if (isset($files[$name]) && $files[$name] !== $file->getPathname()) {
+                    throw new \LogicException("Duplicate migration name [{$name}] found in [{$files[$name]}] and [{$file->getPathname()}].");
+                }
                 $files[$name] = $file->getPathname();
             }
         }

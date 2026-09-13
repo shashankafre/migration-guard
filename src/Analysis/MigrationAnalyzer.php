@@ -54,7 +54,15 @@ final class MigrationAnalyzer
                 $errors[] = "{$name}: {$parsed['error']}";
             }
 
+            $createdTables = array_flip(array_filter(array_map(static fn ($operation) => $operation->type === 'create_table' ? $operation->table : null, $parsed['operations'])));
+
             foreach ($parsed['operations'] as $operation) {
+                if ($operation->table !== null && isset($createdTables[$operation->table])) {
+                    $operation = new \MigrationGuard\Laravel\Operations\MigrationOperation(
+                        $operation->type, $operation->table, $operation->column, $operation->columns, $operation->nullable, $operation->columnType,
+                        [...$operation->attributes, 'created_in_migration' => true],
+                    );
+                }
                 foreach ($this->rules->analyze($operation, $context, $name) as $risk) {
                     $risks[] = $this->exceptions->apply($risk->withFile($file));
                 }
