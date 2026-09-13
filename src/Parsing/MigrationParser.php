@@ -1,10 +1,10 @@
 <?php
 
-namespace MigrationSafe\Laravel\Parsing;
+namespace MigrationGuard\Laravel\Parsing;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use MigrationSafe\Laravel\Operations\MigrationOperation;
+use MigrationGuard\Laravel\Operations\MigrationOperation;
 
 final class MigrationParser
 {
@@ -45,6 +45,8 @@ final class CapturedSchema
     public function create(string $table, \Closure $callback): void { $this->collector->create($table, $callback); }
     public function table(string $table, \Closure $callback): void { $this->collector->table($table, $callback); }
     public function drop(string $table): void { $this->collector->add(new MigrationOperation('drop_table', $table)); }
+    public function dropIfExists(string $table): void { $this->collector->add(new MigrationOperation('drop_table', $table)); }
+    public function rename(string $from, string $to): void { $this->collector->add(new MigrationOperation('rename_table', $from, attributes: ['to' => $to])); }
 }
 
 final class CapturedDatabase

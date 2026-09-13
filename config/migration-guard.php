@@ -34,11 +34,15 @@ return [
         'unique_constraint' => true,
         'foreign_key' => true,
         'column_change' => true,
+        'rename_column' => true,
         'raw_sql' => true,
     ],
 
     'tenancy' => [
+        // Bind a TenantResolver class name or service-container binding.
         'resolver' => null,
+        // Optionally bind a TenantManager class name or service-container binding.
+        'manager' => null,
         'disconnect_after_analysis' => true,
     ],
 
@@ -46,5 +50,12 @@ return [
         'query_timeout_seconds' => 5,
         'duplicate_sample_limit' => 10,
         'orphan_sample_limit' => 10,
+        'max_validation_rows' => null,
     ],
+
+    // Each entry requires migration, rule, and reason. An approved finding is reported but does not block CI.
+    'approvals' => [],
+
+    // Entries may set migration and/or rule, plus an optional ISO-8601 expires_at date.
+    'ignores' => [],
 ];

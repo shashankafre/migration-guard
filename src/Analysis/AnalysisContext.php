@@ -1,9 +1,9 @@
 <?php
 
-namespace MigrationSafe\Laravel\Analysis;
+namespace MigrationGuard\Laravel\Analysis;
 
-use MigrationSafe\Laravel\Scope\MigrationScope;
-use MigrationSafe\Laravel\Tenancy\TenantContext;
+use MigrationGuard\Laravel\Scope\MigrationScope;
+use MigrationGuard\Laravel\Tenancy\TenantContext;
 
 final readonly class AnalysisContext
 {

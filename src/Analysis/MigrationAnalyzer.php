@@ -1,12 +1,13 @@
 <?php
 
-namespace MigrationSafe\Laravel\Analysis;
+namespace MigrationGuard\Laravel\Analysis;
 
-use MigrationSafe\Laravel\Discovery\MigrationDiscovery;
-use MigrationSafe\Laravel\Parsing\MigrationParser;
-use MigrationSafe\Laravel\Rules\SafetyRuleEngine;
-use MigrationSafe\Laravel\Scope\MigrationScope;
-use MigrationSafe\Laravel\Tenancy\TenantContext;
+use MigrationGuard\Laravel\Discovery\MigrationDiscovery;
+use MigrationGuard\Laravel\Exceptions\FindingExceptionMatcher;
+use MigrationGuard\Laravel\Parsing\MigrationParser;
+use MigrationGuard\Laravel\Rules\SafetyRuleEngine;
+use MigrationGuard\Laravel\Scope\MigrationScope;
+use MigrationGuard\Laravel\Tenancy\TenantContext;
 
 final class MigrationAnalyzer
 {
@@ -14,33 +15,38 @@ final class MigrationAnalyzer
         private readonly MigrationDiscovery $discovery,
         private readonly MigrationParser $parser,
         private readonly SafetyRuleEngine $rules,
+        private readonly FindingExceptionMatcher $exceptions,
     ) {
     }
 
-    public function central(): MigrationAnalysis
+    /** @param array<int, string>|null $paths */
+    public function central(?array $paths = null, ?string $from = null): MigrationAnalysis
     {
-        $config = config('migration-safety.migrations.central');
+        $config = config('migration-guard.migrations.central');
 
         return $this->analyze(
             new AnalysisContext(MigrationScope::Central, $config['connection'] ?: config('database.default')),
-            $config['paths'],
+            $paths ?? $config['paths'],
+            $from,
         );
     }
 
-    public function tenant(TenantContext $tenant): MigrationAnalysis
+    /** @param array<int, string>|null $paths */
+    public function tenant(TenantContext $tenant, ?array $paths = null, ?string $from = null): MigrationAnalysis
     {
         return $this->analyze(
             new AnalysisContext(MigrationScope::Tenant, $tenant->connection, $tenant),
-            config('migration-safety.migrations.tenant.paths'),
+            $paths ?? config('migration-guard.migrations.tenant.paths'),
+            $from,
         );
     }
 
     /** @param array<int, string> $paths */
-    private function analyze(AnalysisContext $context, array $paths): MigrationAnalysis
+    private function analyze(AnalysisContext $context, array $paths, ?string $from): MigrationAnalysis
     {
         $risks = [];
         $errors = [];
-        $pending = $this->discovery->pending($paths, $context->connection);
+        $pending = $this->discovery->pending($paths, $context->connection, $from);
 
         foreach ($pending as $name => $file) {
             $parsed = $this->parser->parse($file);
@@ -49,7 +55,9 @@ final class MigrationAnalyzer
             }
 
             foreach ($parsed['operations'] as $operation) {
-                array_push($risks, ...$this->rules->analyze($operation, $context, $name));
+                foreach ($this->rules->analyze($operation, $context, $name) as $risk) {
+                    $risks[] = $this->exceptions->apply($risk->withFile($file));
+                }
             }
         }
 

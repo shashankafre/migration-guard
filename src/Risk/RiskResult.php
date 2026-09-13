@@ -1,8 +1,8 @@
 <?php
 
-namespace MigrationSafe\Laravel\Risk;
+namespace MigrationGuard\Laravel\Risk;
 
-use MigrationSafe\Laravel\Scope\MigrationScope;
+use MigrationGuard\Laravel\Scope\MigrationScope;
 
 final readonly class RiskResult
 {
@@ -16,6 +16,9 @@ final readonly class RiskResult
         public ?string $table = null,
         public ?string $column = null,
         public ?string $tenant = null,
+        public string $status = 'active',
+        public ?string $exceptionReason = null,
+        public ?string $file = null,
     ) {
     }
 
@@ -32,6 +35,19 @@ final readonly class RiskResult
             'table' => $this->table,
             'column' => $this->column,
             'tenant' => $this->tenant,
+            'status' => $this->status,
+            'exception_reason' => $this->exceptionReason,
+            'file' => $this->file,
         ];
+    }
+
+    public function withStatus(string $status, string $reason): self
+    {
+        return new self($this->level, $this->rule, $this->reason, $this->recommendation, $this->scope, $this->migration, $this->table, $this->column, $this->tenant, $status, $reason, $this->file);
+    }
+
+    public function withFile(string $file): self
+    {
+        return new self($this->level, $this->rule, $this->reason, $this->recommendation, $this->scope, $this->migration, $this->table, $this->column, $this->tenant, $this->status, $this->exceptionReason, $file);
     }
 }

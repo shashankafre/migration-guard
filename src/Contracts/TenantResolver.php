@@ -1,8 +1,8 @@
 <?php
 
-namespace MigrationSafe\Laravel\Contracts;
+namespace MigrationGuard\Laravel\Contracts;
 
-use MigrationSafe\Laravel\Tenancy\TenantContext;
+use MigrationGuard\Laravel\Tenancy\TenantContext;
 
 interface TenantResolver
 {

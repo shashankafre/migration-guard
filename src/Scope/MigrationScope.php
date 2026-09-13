@@ -1,6 +1,6 @@
 <?php
 
-namespace MigrationSafe\Laravel\Scope;
+namespace MigrationGuard\Laravel\Scope;
 
 enum MigrationScope: string
 {

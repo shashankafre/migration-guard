@@ -1,10 +1,10 @@
 <?php
 
-namespace MigrationSafe\Laravel\Parsing;
+namespace MigrationGuard\Laravel\Parsing;
 
 use Illuminate\Database\Connection;
 use Illuminate\Database\Schema\Blueprint;
-use MigrationSafe\Laravel\Operations\MigrationOperation;
+use MigrationGuard\Laravel\Operations\MigrationOperation;
 
 final class BlueprintCollector
 {
@@ -57,7 +57,14 @@ final class CapturedBlueprint extends Blueprint
 
     public function addColumn($type, $name, array $parameters = [])
     {
-        $operation = new MigrationOperation('add_column', $this->capturedTable, (string) $name, columnType: (string) $type, nullable: false);
+        $operation = new MigrationOperation(
+            'add_column',
+            $this->capturedTable,
+            (string) $name,
+            columnType: (string) $type,
+            nullable: false,
+            attributes: [...$parameters, 'unsigned' => $parameters['unsigned'] ?? str_starts_with(strtolower((string) $type), 'unsigned')],
+        );
         $index = $this->collector->add($operation);
 
         return new CapturedColumn($operation, $index, $this->collector);
@@ -66,6 +73,11 @@ final class CapturedBlueprint extends Blueprint
     public function drop()
     {
         $this->collector->add(new MigrationOperation('drop_table', $this->capturedTable));
+    }
+
+    public function dropIfExists()
+    {
+        $this->drop();
     }
 
     public function dropColumn($columns)
@@ -80,19 +92,39 @@ final class CapturedBlueprint extends Blueprint
         $this->collector->add(new MigrationOperation('rename_column', $this->capturedTable, (string) $from, attributes: ['to' => $to]));
     }
 
+    public function rename($to)
+    {
+        $this->collector->add(new MigrationOperation('rename_table', $this->capturedTable, attributes: ['to' => $to]));
+    }
+
     public function index($columns, $name = null, $algorithm = null)
     {
-        $this->collector->add(new MigrationOperation('add_index', $this->capturedTable, columns: (array) $columns));
+        $this->collector->add(new MigrationOperation('add_index', $this->capturedTable, columns: (array) $columns, attributes: ['name' => $name, 'algorithm' => $algorithm]));
     }
 
     public function unique($columns, $name = null, $algorithm = null)
     {
-        $this->collector->add(new MigrationOperation('add_unique_index', $this->capturedTable, columns: (array) $columns));
+        $this->collector->add(new MigrationOperation('add_unique_index', $this->capturedTable, columns: (array) $columns, attributes: ['name' => $name, 'algorithm' => $algorithm]));
     }
 
     public function foreign($columns, $name = null)
     {
         return new CapturedForeignKey($this->capturedTable, (string) $columns, $this->collector);
+    }
+
+    public function dropIndex($index)
+    {
+        $this->collector->add(new MigrationOperation('drop_index', $this->capturedTable, attributes: ['index' => $index]));
+    }
+
+    public function dropUnique($index)
+    {
+        $this->collector->add(new MigrationOperation('drop_unique_index', $this->capturedTable, attributes: ['index' => $index]));
+    }
+
+    public function dropForeign($index)
+    {
+        $this->collector->add(new MigrationOperation('drop_foreign_key', $this->capturedTable, attributes: ['index' => $index]));
     }
 
     public function __call($method, $arguments)
@@ -112,16 +144,15 @@ final class CapturedColumn
     public function __call(string $method, array $arguments): self
     {
         if ($method === 'nullable') {
-            $this->operation = new MigrationOperation(
-                $this->operation->type,
-                $this->operation->table,
-                $this->operation->column,
-                $this->operation->columns,
-                true,
-                $this->operation->columnType,
-                $this->operation->attributes,
-            );
-            $this->collector->replace($this->index, $this->operation);
+            $this->replace(nullable: true);
+        }
+
+        if ($method === 'default') {
+            $this->replace(attributes: ['default' => $arguments[0] ?? null]);
+        }
+
+        if (in_array($method, ['unsigned', 'after', 'comment'], true)) {
+            $this->replace(attributes: [$method => $arguments[0] ?? true]);
         }
 
         if ($method === 'unique') {
@@ -136,7 +167,31 @@ final class CapturedColumn
             $this->collector->add(new MigrationOperation('change_column', $this->operation->table, $this->operation->column, columnType: $this->operation->columnType));
         }
 
+        if ($method === 'constrained') {
+            $column = (string) $this->operation->column;
+            $table = $arguments[0] ?? preg_replace('/_id$/', '', $column).'s';
+            $this->collector->add(new MigrationOperation('add_foreign_key', $this->operation->table, $column, attributes: [
+                'referenced_table' => $table,
+                'referenced_column' => $arguments[1] ?? 'id',
+            ]));
+        }
+
         return $this;
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function replace(?bool $nullable = null, array $attributes = []): void
+    {
+        $this->operation = new MigrationOperation(
+            $this->operation->type,
+            $this->operation->table,
+            $this->operation->column,
+            $this->operation->columns,
+            $nullable ?? $this->operation->nullable,
+            $this->operation->columnType,
+            [...$this->operation->attributes, ...$attributes],
+        );
+        $this->collector->replace($this->index, $this->operation);
     }
 }
 

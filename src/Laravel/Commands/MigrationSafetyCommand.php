@@ -1,14 +1,14 @@
 <?php
 
-namespace MigrationSafe\Laravel\Laravel\Commands;
+namespace MigrationGuard\Laravel\Laravel\Commands;
 
 use Illuminate\Console\Command;
-use MigrationSafe\Laravel\Analysis\MigrationAnalysis;
-use MigrationSafe\Laravel\Analysis\MigrationAnalyzer;
-use MigrationSafe\Laravel\Contracts\TenantManager;
-use MigrationSafe\Laravel\Contracts\TenantResolver;
-use MigrationSafe\Laravel\Reports\ConsoleReporter;
-use MigrationSafe\Laravel\Risk\RiskLevel;
+use MigrationGuard\Laravel\Analysis\MigrationAnalysis;
+use MigrationGuard\Laravel\Analysis\MigrationAnalyzer;
+use MigrationGuard\Laravel\Contracts\TenantManager;
+use MigrationGuard\Laravel\Contracts\TenantResolver;
+use MigrationGuard\Laravel\Reports\ConsoleReporter;
+use MigrationGuard\Laravel\Risk\RiskLevel;
 
 final class MigrationSafetyCommand extends Command
 {
@@ -18,6 +18,8 @@ final class MigrationSafetyCommand extends Command
         {--tenant= : Analyze one tenant by ID}
         {--ci : Return a non-zero code when the configured threshold is reached}
         {--format=console : Output format: console or json}
+        {--path=* : Migration path to analyze instead of the configured paths}
+        {--from= : Analyze migrations at or after this migration name}
         {--limit= : Maximum tenants to analyze}
         {--fail-fast : Stop tenant analysis at the configured blocking threshold}';
 
@@ -25,7 +27,7 @@ final class MigrationSafetyCommand extends Command
 
     public function handle(MigrationAnalyzer $analyzer, ConsoleReporter $reporter): int
     {
-        if (!config('migration-safety.enabled')) {
+        if (!config('migration-guard.enabled')) {
             $this->components->info('Migration safety analysis is disabled.');
             return self::SUCCESS;
         }
@@ -37,11 +39,11 @@ final class MigrationSafetyCommand extends Command
 
         $analyses = [];
         $tenantRequested = $this->option('tenants') || $this->option('tenant') !== null;
-        if (!$tenantRequested && config('migration-safety.migrations.central.enabled')) {
-            $analyses['central'] = $analyzer->central();
+        if (!$tenantRequested && config('migration-guard.migrations.central.enabled')) {
+            $analyses['central'] = $analyzer->central($this->paths(), $this->option('from'));
         }
 
-        if (!$this->option('central') && config('migration-safety.migrations.tenant.enabled')) {
+        if (!$this->option('central') && config('migration-guard.migrations.tenant.enabled')) {
             $analyses['tenants'] = $this->analyzeTenants($analyzer);
         }
 
@@ -61,6 +63,11 @@ final class MigrationSafetyCommand extends Command
 
     private function analyzeTenants(MigrationAnalyzer $analyzer): MigrationAnalysis
     {
+        if (!app()->bound(TenantResolver::class)) {
+            $this->components->error('Tenant analysis requires a configured TenantResolver.');
+            return new MigrationAnalysis([], 0, ['TenantResolver is not configured.']);
+        }
+
         $resolver = app(TenantResolver::class);
         $manager = app()->bound(TenantManager::class) ? app(TenantManager::class) : null;
         if (!$resolver instanceof TenantResolver) {
@@ -71,30 +78,48 @@ final class MigrationSafetyCommand extends Command
         $allRisks = [];
         $errors = [];
         $pending = 0;
+        $analyzed = 0;
+        $skipped = 0;
         $limit = $this->option('limit') === null ? null : (int) $this->option('limit');
         $tenants = $this->option('tenant') ? array_filter([$resolver->find($this->option('tenant'))]) : $resolver->tenants();
 
         foreach ($tenants as $index => $tenant) {
             if ($limit !== null && $index >= $limit) {
+                $skipped++;
                 break;
             }
             try {
                 $manager?->activate($tenant);
-                $analysis = $analyzer->tenant($tenant);
+                $analysis = $analyzer->tenant($tenant, $this->paths(), $this->option('from'));
+                $analyzed++;
                 array_push($allRisks, ...$analysis->risks);
                 array_push($errors, ...$analysis->errors);
                 $pending += $analysis->pendingMigrations;
-                if ($this->option('fail-fast') && $analysis->highestRisk()->value >= RiskLevel::fromName(config('migration-safety.risk.tenant.fail_on'))->value) {
+                if ($this->option('fail-fast') && $analysis->highestRisk()->value >= RiskLevel::fromName(config('migration-guard.risk.tenant.fail_on'))->value) {
+                    $skipped++;
                     break;
                 }
+            } catch (\Throwable $exception) {
+                $errors[] = "{$tenant->id}: {$exception->getMessage()}";
             } finally {
-                if ($manager !== null && config('migration-safety.tenancy.disconnect_after_analysis')) {
+                if ($manager !== null && config('migration-guard.tenancy.disconnect_after_analysis')) {
                     $manager->disconnect($tenant);
                 }
             }
         }
 
-        return new MigrationAnalysis($allRisks, $pending, $errors);
+        return new MigrationAnalysis($allRisks, $pending, $errors, $analyzed, $skipped);
+    }
+
+    /** @return array<int, string>|null */
+    private function paths(): ?array
+    {
+        $paths = $this->option('path');
+
+        return $paths === [] ? null : array_map(
+            static fn (string $path) => preg_match('/^[A-Za-z]:[\\\\\/]|^\//', $path) === 1 ? $path : base_path($path),
+            $paths,
+        );
     }
 
     /** @param array<string, MigrationAnalysis> $analyses */
@@ -105,7 +130,7 @@ final class MigrationSafetyCommand extends Command
                 return 5;
             }
             $configScope = $scope === 'tenants' ? 'tenant' : $scope;
-            $threshold = RiskLevel::fromName(config("migration-safety.risk.{$configScope}.fail_on", 'critical'));
+            $threshold = RiskLevel::fromName(config("migration-guard.risk.{$configScope}.fail_on", 'critical'));
             if ($analysis->highestRisk()->value >= $threshold->value) {
                 return $this->option('ci') ? 1 : self::SUCCESS;
             }
@@ -126,6 +151,8 @@ final class MigrationSafetyCommand extends Command
                 'pending_migrations' => $analysis->pendingMigrations,
                 'findings' => array_map(static fn ($risk) => $risk->toArray(), $analysis->risks),
                 'errors' => $analysis->errors,
+                'tenants_analyzed' => $analysis->tenantsAnalyzed,
+                'tenants_skipped' => $analysis->tenantsSkipped,
             ];
         }
 

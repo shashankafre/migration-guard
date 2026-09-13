@@ -1,6 +1,6 @@
 <?php
 
-namespace MigrationSafe\Laravel\Operations;
+namespace MigrationGuard\Laravel\Operations;
 
 final readonly class MigrationOperation
 {

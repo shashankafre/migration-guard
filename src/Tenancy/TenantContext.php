@@ -1,6 +1,6 @@
 <?php
 
-namespace MigrationSafe\Laravel\Tenancy;
+namespace MigrationGuard\Laravel\Tenancy;
 
 final readonly class TenantContext
 {

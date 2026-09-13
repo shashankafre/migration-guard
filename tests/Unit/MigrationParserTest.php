@@ -1,9 +1,9 @@
 <?php
 
-namespace MigrationSafe\Laravel\Tests\Unit;
+namespace MigrationGuard\Laravel\Tests\Unit;
 
-use MigrationSafe\Laravel\Parsing\MigrationParser;
-use MigrationSafe\Laravel\Tests\TestCase;
+use MigrationGuard\Laravel\Parsing\MigrationParser;
+use MigrationGuard\Laravel\Tests\TestCase;
 
 final class MigrationParserTest extends TestCase
 {

@@ -1,5 +1,5 @@
 {
-    "name": "migrationsafe/laravel",
+    "name": "shashankafre/migration-guard",
     "description": "Analyze pending Laravel migrations for deployment risk before they run.",
     "keywords": [
         "laravel",
@@ -22,12 +22,12 @@
     },
     "autoload": {
         "psr-4": {
-            "MigrationSafe\\Laravel\\": "src/"
+            "MigrationGuard\\Laravel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "MigrationSafe\\Laravel\\Tests\\": "tests/",
+            "MigrationGuard\\Laravel\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/",
             "Workbench\\Database\\Factories\\": "workbench/database/factories/",
             "Workbench\\Database\\Seeders\\": "workbench/database/seeders/"
@@ -36,7 +36,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "MigrationSafe\\Laravel\\MigrationSafetyServiceProvider"
+                "MigrationGuard\\Laravel\\MigrationSafetyServiceProvider"
             ]
         }
     },

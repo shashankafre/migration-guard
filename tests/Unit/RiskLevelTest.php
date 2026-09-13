@@ -1,9 +1,9 @@
 <?php
 
-namespace MigrationSafe\Laravel\Tests\Unit;
+namespace MigrationGuard\Laravel\Tests\Unit;
 
-use MigrationSafe\Laravel\Risk\RiskLevel;
-use MigrationSafe\Laravel\Tests\TestCase;
+use MigrationGuard\Laravel\Risk\RiskLevel;
+use MigrationGuard\Laravel\Tests\TestCase;
 
 final class RiskLevelTest extends TestCase
 {

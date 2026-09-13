@@ -1,9 +1,9 @@
 <?php
 
-namespace MigrationSafe\Laravel\Analysis;
+namespace MigrationGuard\Laravel\Analysis;
 
-use MigrationSafe\Laravel\Risk\RiskLevel;
-use MigrationSafe\Laravel\Risk\RiskResult;
+use MigrationGuard\Laravel\Risk\RiskLevel;
+use MigrationGuard\Laravel\Risk\RiskResult;
 
 final readonly class MigrationAnalysis
 {
@@ -12,13 +12,17 @@ final readonly class MigrationAnalysis
         public array $risks,
         public int $pendingMigrations,
         public array $errors = [],
+        public int $tenantsAnalyzed = 0,
+        public int $tenantsSkipped = 0,
     ) {
     }
 
     public function highestRisk(): RiskLevel
     {
-        return empty($this->risks)
+        $active = array_filter($this->risks, static fn (RiskResult $risk) => $risk->status === 'active');
+
+        return empty($active)
             ? RiskLevel::Low
-            : RiskLevel::from(max(array_map(static fn (RiskResult $risk) => $risk->level->value, $this->risks)));
+            : RiskLevel::from(max(array_map(static fn (RiskResult $risk) => $risk->level->value, $active)));
     }
 }

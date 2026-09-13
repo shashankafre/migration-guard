@@ -1,8 +1,8 @@
 <?php
 
-namespace MigrationSafe\Laravel\Tests;
+namespace MigrationGuard\Laravel\Tests;
 
-use MigrationSafe\Laravel\MigrationSafetyServiceProvider;
+use MigrationGuard\Laravel\MigrationSafetyServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra

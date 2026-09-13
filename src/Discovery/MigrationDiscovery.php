@@ -1,6 +1,6 @@
 <?php
 
-namespace MigrationSafe\Laravel\Discovery;
+namespace MigrationGuard\Laravel\Discovery;
 
 use Illuminate\Database\ConnectionResolverInterface;
 
@@ -13,7 +13,7 @@ final class MigrationDiscovery
     /** @param array<int, string> $paths
      *  @return array<string, string> migration name => file path
      */
-    public function pending(array $paths, ?string $connection = null): array
+    public function pending(array $paths, ?string $connection = null, ?string $from = null): array
     {
         $files = $this->files($paths);
         $database = $this->connections->connection($connection);
@@ -26,7 +26,9 @@ final class MigrationDiscovery
             $ran = [];
         }
 
-        return array_diff_key($files, array_flip($ran));
+        $pending = array_diff_key($files, array_flip($ran));
+
+        return $from === null ? $pending : array_filter($pending, static fn (string $file, string $migration) => $migration >= $from, ARRAY_FILTER_USE_BOTH);
     }
 
     /** @param array<int, string> $paths

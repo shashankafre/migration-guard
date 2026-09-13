@@ -1,6 +1,6 @@
 <?php
 
-namespace MigrationSafe\Laravel\Risk;
+namespace MigrationGuard\Laravel\Risk;
 
 enum RiskLevel: int
 {
