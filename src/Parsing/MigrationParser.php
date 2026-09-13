@@ -54,6 +54,15 @@ final class StaticMigrationVisitor extends NodeVisitorAbstract
             $this->blueprintCall($node);
         }
 
+        if ($node instanceof Node\Expr\MethodCall && $node->var instanceof Node\Expr\StaticCall && $node->var->class instanceof Node\Name && in_array(strtolower($node->var->class->toString()), ['schema', 'illuminate\\support\\facades\\schema'], true)) {
+            $method = $node->name instanceof Node\Identifier ? strtolower($node->name->toString()) : 'dynamic';
+            if (in_array($method, ['create', 'table'], true)) {
+                $table = $this->stringArgument($node, 0);
+                $this->currentTable = $table;
+                $this->operations[] = new MigrationOperation($method === 'create' ? 'create_table' : 'schema_definition', $table, attributes: ['line' => $node->getStartLine(), 'connection' => $this->stringArgument($node->var, 0)]);
+            }
+        }
+
         if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && in_array($node->name->toString(), ['update', 'delete', 'insert', 'updateOrInsert'], true)) {
             $this->operations[] = new MigrationOperation('data_write', attributes: ['api' => "QueryBuilder::{$node->name}", 'line' => $node->getStartLine()]);
         }

@@ -71,6 +71,9 @@ final class SafetyRuleEngine
         if (!config('migration-guard.rules.unique_constraint')) {
             return [];
         }
+        if ($operation->table === null) {
+            return [$risk(RiskLevel::High, 'unique_constraint', 'Could not determine the table for this unique constraint.', 'Review the migration manually; the analyzer will not assume the constraint is safe.')];
+        }
         if (!$this->existingTable($operation)) {
             return [$risk(RiskLevel::Low, 'unique_constraint', 'Adds a unique constraint to a newly created table.', 'Verify the constraint definition.')];
         }
@@ -90,7 +93,7 @@ final class SafetyRuleEngine
         if (!config('migration-guard.rules.foreign_key')) {
             return [];
         }
-        if (!$this->existingTable($operation) || !isset($operation->attributes['referenced_table'], $operation->attributes['referenced_column'])) {
+        if ($operation->table === null || $operation->column === null || !$this->existingTable($operation) || !isset($operation->attributes['referenced_table'], $operation->attributes['referenced_column'])) {
             return [$risk(RiskLevel::Low, 'foreign_key', 'Adds a foreign key whose referenced data cannot require pre-existing validation.', 'Verify the referenced table and cascade behavior.')];
         }
         $orphans = $this->inspector->orphanedRows($operation->table, $operation->column, $operation->attributes['referenced_table'], $operation->attributes['referenced_column'], $context->connection);
